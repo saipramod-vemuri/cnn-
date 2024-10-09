@@ -1,0 +1,87 @@
+# Importing necessary libraries
+import tensorflow as tf
+from tensorflow.keras import datasets, layers, models
+import matplotlib.pyplot as plt
+import numpy as np # Added import statement for NumPy
+from sklearn.metrics import precision_score, recall_score, f1_score
+
+# Load and prepare the MNIST dataset
+(train_images, train_labels), (test_images, test_labels) = datasets.mnist.load_data()
+
+# Normalize the data (Convert pixel values from [0, 255] to [0, 1])
+train_images = train_images.reshape((train_images.shape[0], 28, 28, 1)).astype('float32') / 255
+test_images = test_images.reshape((test_images.shape[0], 28, 28, 1)).astype('float32') / 255
+
+# Building the CNN model
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+
+    # Flatten the results to feed into a fully connected layer
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dense(10, activation='softmax')  # 10 classes for digits 0-9
+])
+
+# Compile the model
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Train the model
+history = model.fit(train_images, train_labels, epochs=5, validation_data=(test_images, test_labels))
+# Evaluate the model
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
+print(f"Test accuracy: {test_acc}")
+
+# Plot some sample test images with predictions
+predictions = model.predict(test_images)
+
+# Display some sample results
+def plot_image(i, predictions_array, true_label, img):
+    predictions_array, true_label, img = predictions_array[i], true_label[i], img[i]
+    plt.grid(False)
+    plt.xticks([])
+    plt.yticks([])
+
+    plt.imshow(img.squeeze(), cmap=plt.cm.binary)
+
+    predicted_label = np.argmax(predictions_array)
+    if predicted_label == true_label:
+        color = 'blue'
+    else:
+        color = 'red'
+
+    plt.xlabel(f"{predicted_label} ({true_label})", color=color)
+
+# Display the first 5 test images and predictions
+plt.figure(figsize=(10, 10))
+for i in range(5):
+    plt.subplot(1, 5, i+1)
+    plot_image(i, predictions, test_labels, test_images)
+plt.show()
+# Predict the labels for the test set
+y_pred = model.predict(test_images)
+y_pred_classes = np.argmax(y_pred, axis=1)
+
+# Calculate precision, recall, and F1 score
+precision = precision_score(test_labels, y_pred_classes, average='weighted')
+recall = recall_score(test_labels, y_pred_classes, average='weighted')
+f1 = f1_score(test_labels, y_pred_classes, average='weighted')
+
+print(f"Precision: {precision}")
+print(f"Recall: {recall}")
+print(f"F1 Score: {f1}")
+
+
+# Plot training & validation loss
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend(loc='upper right')
+plt.title('Training and Validation Loss')
+plt.show()
